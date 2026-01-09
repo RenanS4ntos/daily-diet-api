@@ -179,16 +179,24 @@ export async function mealRoutes(app: FastifyInstance) {
 
       const meals = await Knex('meals').where('user_id', user.id).select()
 
-      const mealsMetrics = meals.reduce(
+      const {
+        totalMealsOnDiet,
+        totalMealsOffDiet,
+        totalMeals,
+        bestSequenceOnDiet,
+      } = meals.reduce(
         (acc, meal) => {
           acc.totalMeals += 1
 
           if (meal.on_diet) {
             acc.totalMealsOnDiet += 1
-            acc.bestSequenceOnDiet += 1
+            acc.currentSequenceOnDiet += 1
+            if (acc.currentSequenceOnDiet > acc.bestSequenceOnDiet) {
+              acc.bestSequenceOnDiet = acc.currentSequenceOnDiet
+            }
           } else {
             acc.totalMealsOffDiet += 1
-            acc.bestSequenceOnDiet = 0
+            acc.currentSequenceOnDiet = 0
           }
 
           return acc
@@ -198,10 +206,18 @@ export async function mealRoutes(app: FastifyInstance) {
           totalMealsOnDiet: 0,
           totalMealsOffDiet: 0,
           bestSequenceOnDiet: 0,
+          currentSequenceOnDiet: 0,
         },
       )
 
-      return { mealsMetrics }
+      return {
+        mealsMetrics: {
+          totalMealsOnDiet,
+          totalMealsOffDiet,
+          totalMeals,
+          bestSequenceOnDiet,
+        },
+      }
     },
   )
 }

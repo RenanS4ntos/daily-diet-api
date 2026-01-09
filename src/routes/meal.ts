@@ -164,4 +164,44 @@ export async function mealRoutes(app: FastifyInstance) {
       return reply.status(204).send()
     },
   )
+
+  app.get(
+    '/metrics',
+    { preHandler: checkSessionIdExists },
+    async (request, reply) => {
+      const sessionId = request.cookies.sessionId
+
+      const user = await Knex('users').where('session_id', sessionId).first()
+
+      if (!user) {
+        return reply.status(404).send({ error: 'User not found' })
+      }
+
+      const meals = await Knex('meals').where('user_id', user.id).select()
+
+      const mealsMetrics = meals.reduce(
+        (acc, meal) => {
+          acc.totalMeals += 1
+
+          if (meal.on_diet) {
+            acc.totalMealsOnDiet += 1
+            acc.bestSequenceOnDiet += 1
+          } else {
+            acc.totalMealsOffDiet += 1
+            acc.bestSequenceOnDiet = 0
+          }
+
+          return acc
+        },
+        {
+          totalMeals: 0,
+          totalMealsOnDiet: 0,
+          totalMealsOffDiet: 0,
+          bestSequenceOnDiet: 0,
+        },
+      )
+
+      return { mealsMetrics }
+    },
+  )
 }
